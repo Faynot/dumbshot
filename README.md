@@ -39,7 +39,7 @@ Run these commands:
 ```shell
 git clone https://github.com/Faynot/dumbshot
 cd dumbshot
-make install
+make build && sudo make install
 ```
 
 ## Using
