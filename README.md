@@ -1,9 +1,10 @@
 # DumbShot
+![Logo](https://raw.githubusercontent.com/Faynot/dumbshot/main/Logo.png)
 > An elegant, painless one-click screenshot utility for Wayland (grim + slurp)
 
 ## Preview
 
-![Preview](https://raw.githubusercontent.com/Faynot/dumbshot/main/preview.png)
+![Preview](https://raw.githubusercontent.com/Faynot/dumbshot/main/Preview.png)
 
 ## Installing
 
