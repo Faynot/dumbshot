@@ -1,5 +1,5 @@
 (defwindow menu [mon]
-  :monitor mon
+  :monitor {mon}
   :geometry (geometry :x "0%" :y "0%" :anchor "center" :width "550px")
   :stacking "overlay"
   :windowtype "dialog"

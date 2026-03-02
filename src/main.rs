@@ -18,8 +18,7 @@ const EWW_YUCK: &str = include_str!("../assets/eww/eww.yuck");
 const EWW_CSS: &str = include_str!("../assets/eww/eww.css");
 
 fn get_config_content(file_name: &str, default_content: &str) -> String {
-    let user_path = dirs::config_dir()
-        .map(|p| p.join("dumbshot").join("eww").join(file_name));
+    let user_path = dirs::config_dir().map(|p| p.join("dumbshot").join("eww").join(file_name));
 
     if let Some(path) = user_path {
         if path.exists() {
@@ -50,10 +49,10 @@ fn prepare_runtime_config() -> PathBuf {
     let yuck = get_config_content("eww.yuck", EWW_YUCK);
     let css = get_config_content("eww.css", EWW_CSS);
 
-    let monitor_id = get_active_monitor_id();
-    let final_yuck = yuck.replace("MONITOR_ID_HERE", &monitor_id.to_string());
+    //let monitor_id = get_active_monitor_id();
+    //let final_yuck = yuck.replace("MONITOR_ID_HERE", &monitor_id.to_string());
 
-    let _ = fs::write(runtime_dir.join("eww.yuck"), final_yuck);
+    let _ = fs::write(runtime_dir.join("eww.yuck"), yuck);
     let _ = fs::write(runtime_dir.join("eww.css"), css);
 
     runtime_dir
@@ -92,7 +91,9 @@ fn run_eww_menu(title: &str, options: &[(String, Vec<u8>, String)]) -> Option<St
                 (box :orientation "v" :spacing 5 :space-evenly false
                     (image :path "{}" :image-width 48 :image-height 48)
                     (label :text "{}"))) "#,
-            id, icon_file.to_string_lossy(), label
+            id,
+            icon_file.to_string_lossy(),
+            label
         ));
     }
     buttons_yuck.push(')');
@@ -110,10 +111,20 @@ fn run_eww_menu(title: &str, options: &[(String, Vec<u8>, String)]) -> Option<St
     thread::sleep(Duration::from_millis(300));
 
     let _ = Command::new("eww")
-        .args(["--config", &config_arg, "update", &format!("title={}", title)])
+        .args([
+            "--config",
+            &config_arg,
+            "update",
+            &format!("title={}", title),
+        ])
         .status();
     let _ = Command::new("eww")
-        .args(["--config", &config_arg, "update", &format!("buttons_json={}", buttons_yuck)])
+        .args([
+            "--config",
+            &config_arg,
+            "update",
+            &format!("buttons_json={}", buttons_yuck),
+        ])
         .status();
 
     let monitor_id = get_active_monitor_id();
@@ -124,7 +135,7 @@ fn run_eww_menu(title: &str, options: &[(String, Vec<u8>, String)]) -> Option<St
             "open",
             "menu",
             "--arg",
-            &format!("mon={}", monitor_id)
+            &format!("mon={}", monitor_id),
         ])
         .status();
 
@@ -142,7 +153,9 @@ fn run_eww_menu(title: &str, options: &[(String, Vec<u8>, String)]) -> Option<St
         thread::sleep(Duration::from_millis(100));
     }
 
-    let _ = Command::new("eww").args(["--config", &config_arg, "kill"]).status();
+    let _ = Command::new("eww")
+        .args(["--config", &config_arg, "kill"])
+        .status();
     let _ = daemon.kill();
     let _ = fs::remove_file(res_file);
 
@@ -154,7 +167,10 @@ fn run_eww_menu(title: &str, options: &[(String, Vec<u8>, String)]) -> Option<St
 }
 
 fn get_monitors_list() -> Option<Vec<String>> {
-    let out = Command::new("hyprctl").args(["monitors", "-j"]).output().ok()?;
+    let out = Command::new("hyprctl")
+        .args(["monitors", "-j"])
+        .output()
+        .ok()?;
     let v: Value = serde_json::from_slice(&out.stdout).ok()?;
     let names: Vec<String> = v
         .as_array()?
@@ -177,28 +193,28 @@ fn main() {
     let args: Vec<String> = std::env::args().collect();
 
     if args.len() > 1 {
-            match args[1].as_str() {
-                "--version" | "-V" => {
-                    println!("dumbshot {}", env!("CARGO_PKG_VERSION"));
-                    return;
-                }
-                "--help" | "-h" => {
-                    println!("dumbshot {}", env!("CARGO_PKG_VERSION"));
-                    println!("");
-                    println!(
-                        "An elegant, painless one-click screenshot utility for Wayland (grim + slurp)"
-                    );
-                    println!("");
-                    println!("Usage: dumbshot [OPTIONS]");
-                    println!("");
-                    println!("Options:");
-                    println!("  -h, --help     Print help");
-                    println!("  -V, --version  Print version");
-                    return;
-                }
-                _ => {}
+        match args[1].as_str() {
+            "--version" | "-V" => {
+                println!("dumbshot {}", env!("CARGO_PKG_VERSION"));
+                return;
             }
+            "--help" | "-h" => {
+                println!("dumbshot {}", env!("CARGO_PKG_VERSION"));
+                println!("");
+                println!(
+                    "An elegant, painless one-click screenshot utility for Wayland (grim + slurp)"
+                );
+                println!("");
+                println!("Usage: dumbshot [OPTIONS]");
+                println!("");
+                println!("Options:");
+                println!("  -h, --help     Print help");
+                println!("  -V, --version  Print version");
+                return;
+            }
+            _ => {}
         }
+    }
 
     if which("eww").is_err() || which("grim").is_err() || which("slurp").is_err() {
         eprintln!("Error: 'eww', 'grim' and 'slurp' are required.");
@@ -255,7 +271,11 @@ fn main() {
         ("Save".into(), ICON_SAVE.to_vec(), "save".into()),
         ("Copy".into(), ICON_COPY.to_vec(), "copy".into()),
         ("Edit".into(), ICON_EDIT.to_vec(), "edit".into()),
-        ("Save&Copy".into(), ICON_SAVENCOPY.to_vec(), "savencopy".into()),
+        (
+            "Save&Copy".into(),
+            ICON_SAVENCOPY.to_vec(),
+            "savencopy".into(),
+        ),
     ];
 
     let action = run_eww_menu("Action", &actions_menu);
@@ -263,26 +283,48 @@ fn main() {
     if let Some(act) = action {
         match act.as_str() {
             "save" | "savencopy" => {
-                let mut dst = dirs::picture_dir().unwrap_or(PathBuf::from(".")).join("Screenshots");
+                let mut dst = dirs::picture_dir()
+                    .unwrap_or(PathBuf::from("."))
+                    .join("Screenshots");
                 let _ = fs::create_dir_all(&dst);
-                dst.push(format!("screenshot_{}.png", Local::now().format("%Y-%m-%d_%H-%M-%S")));
+                dst.push(format!(
+                    "screenshot_{}.png",
+                    Local::now().format("%Y-%m-%d_%H-%M-%S")
+                ));
                 if fs::copy(&tmp_path, &dst).is_ok() {
                     if act == "savencopy" {
                         if let Ok(file) = fs::File::open(&dst) {
-                            let _ = Command::new("wl-copy").arg("--type").arg("image/png").stdin(file).status();
+                            let _ = Command::new("wl-copy")
+                                .arg("--type")
+                                .arg("image/png")
+                                .stdin(file)
+                                .status();
                         }
                     }
-                    let _ = Command::new("notify-send").arg("Saved").arg(dst.to_string_lossy().as_ref()).status();
+                    let _ = Command::new("notify-send")
+                        .arg("Saved")
+                        .arg(dst.to_string_lossy().as_ref())
+                        .status();
                 }
             }
             "copy" => {
                 if let Ok(file) = fs::File::open(&tmp_path) {
-                    let _ = Command::new("wl-copy").arg("--type").arg("image/png").stdin(file).status();
-                    let _ = Command::new("notify-send").arg("Copied to clipboard").status();
+                    let _ = Command::new("wl-copy")
+                        .arg("--type")
+                        .arg("image/png")
+                        .stdin(file)
+                        .status();
+                    let _ = Command::new("notify-send")
+                        .arg("Copied to clipboard")
+                        .status();
                 }
             }
             "edit" => {
-                let editor = if which("satty").is_ok() { "satty" } else { "xdg-open" };
+                let editor = if which("satty").is_ok() {
+                    "satty"
+                } else {
+                    "xdg-open"
+                };
                 let mut cmd = Command::new(editor);
                 if editor == "satty" {
                     cmd.arg("-f");
