@@ -39,10 +39,11 @@ fn ensure_config() -> PathBuf {
     write_if_not_exists(icons_dir.join("Edit.svg"), ICON_EDIT);
     write_if_not_exists(icons_dir.join("Save.svg"), ICON_SAVE);
     write_if_not_exists(icons_dir.join("SavenCopy.svg"), ICON_SAVENCOPY);
+
     write_if_not_exists(eww_dir.join("eww.yuck"), EWW_YUCK.as_bytes());
     write_if_not_exists(eww_dir.join("eww.css"), EWW_CSS.as_bytes());
 
-    config_dir
+    eww_dir
 }
 
 fn get_active_monitor_id() -> i64 {
@@ -66,16 +67,15 @@ fn get_active_monitor_id() -> i64 {
 }
 
 fn run_eww_menu(title: &str, options: &[(String, Vec<u8>, String)]) -> Option<String> {
-    let _tmp_dir = tempfile::tempdir().ok()?; // keep tempdir alive, silence unused warning
-    let config_path = ensure_config();
-
-    let icons_dir = config_path.join("icons");
-    let _ = fs::create_dir_all(&icons_dir);
+    let eww_config_path = ensure_config();
+    let icons_dir = eww_config_path.parent().unwrap().join("icons");
 
     let mut buttons_yuck = String::from("(box :orientation \"h\" :spacing 15 ");
     for (label, icon_bytes, id) in options {
         let icon_file = icons_dir.join(format!("{}.svg", id));
-        let _ = fs::write(&icon_file, icon_bytes);
+        if !icon_file.exists() {
+            let _ = fs::write(&icon_file, icon_bytes);
+        }
 
         buttons_yuck.push_str(&format!(
             r#"(button :class "menu-btn" :onclick "echo '{}' > /tmp/dumbshot_res"
@@ -87,22 +87,25 @@ fn run_eww_menu(title: &str, options: &[(String, Vec<u8>, String)]) -> Option<St
     }
     buttons_yuck.push(')');
 
-    let monitor_id = get_active_monitor_id();
-    let final_yuck = EWW_YUCK.replace("MONITOR_ID_HERE", &monitor_id.to_string());
+    let current_yuck = fs::read_to_string(eww_config_path.join("eww.yuck")).unwrap_or_else(|_| EWW_YUCK.to_string());
 
-    let _ = fs::write(config_path.join("eww.yuck"), final_yuck.as_bytes());
-    let _ = fs::write(config_path.join("eww.css"), EWW_CSS.as_bytes());
+    let monitor_id = get_active_monitor_id();
+    let final_yuck = current_yuck.replace("MONITOR_ID_HERE", &monitor_id.to_string());
+
+    let _ = fs::write(eww_config_path.join("eww.yuck"), final_yuck.as_bytes());
 
     let res_file = Path::new("/tmp/dumbshot_res");
     let _ = fs::remove_file(res_file);
 
+    let config_arg = eww_config_path.to_string_lossy();
+
     let mut daemon = Command::new("eww")
-        .args(["--config", &config_path.to_string_lossy(), "daemon", "--no-daemonize"])
+        .args(["--config", &config_arg, "daemon", "--no-daemonize"])
         .spawn()
         .ok()?;
-    thread::sleep(Duration::from_millis(250));
 
-    let config_arg = config_path.to_string_lossy();
+    thread::sleep(Duration::from_millis(300));
+
     let _ = Command::new("eww")
         .args(["--config", &config_arg, "update", &format!("title={}", title)])
         .status();
