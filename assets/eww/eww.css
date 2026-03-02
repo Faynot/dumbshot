@@ -1,0 +1,37 @@
+@define-color bg #060505;
+@define-color fg #fff;
+@define-color sel #1C1616;
+
+* {
+    all: unset;
+    font-family: "FiraCode Nerd Font";
+    font-weight: 600;
+}
+
+.main-box {
+    background: @bg;
+    border-radius: 30px;
+    padding: 20px;
+}
+
+.menu-btn {
+    color: @fg;
+    border-radius: 15px;
+    padding: 15px;
+}
+
+.menu-btn:hover {
+    background: @sel;
+}
+
+.cancel-btn {
+    color: red;
+    border-radius: 15px;
+    padding: 8px;
+    margin-top: 10px;
+    -gtk-icon-style: symbolic;
+}
+
+.cancel-btn:hover {
+    background: #1f0000;
+}

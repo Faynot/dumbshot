@@ -1,0 +1,16 @@
+(defwindow menu
+  :monitor MONITOR_ID_HERE
+  :geometry (geometry :x "0%" :y "0%" :anchor "center" :width "550px")
+  :stacking "overlay"
+  :windowtype "dialog"
+  :wm-ignore true
+  (box :class "main-box" :orientation "v" :spacing 20 :space-evenly false
+    (box :orientation "h"
+      (literal :content buttons_json)
+    )
+    (button :class "cancel-btn" :onclick "echo 'Cancel' > /tmp/dumbshot_res" "Cancel")
+  )
+)
+
+(defvar title "Screenshot")
+(defvar buttons_json "")
