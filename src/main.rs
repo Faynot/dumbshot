@@ -17,33 +17,46 @@ const ICON_SAVENCOPY: &[u8] = include_bytes!("../assets/icons/SavenCopy.svg");
 const EWW_YUCK: &str = include_str!("../assets/eww/eww.yuck");
 const EWW_CSS: &str = include_str!("../assets/eww/eww.css");
 
-fn ensure_config() -> PathBuf {
-    let config_dir = dirs::config_dir()
-        .expect("Could not find directory")
-        .join("dumbshot");
-    let icons_dir = config_dir.join("icons");
-    let eww_dir = config_dir.join("eww");
+fn get_config_content(file_name: &str, default_content: &str) -> String {
+    let user_path = dirs::config_dir()
+        .map(|p| p.join("dumbshot").join("eww").join(file_name));
+
+    if let Some(path) = user_path {
+        if path.exists() {
+            return fs::read_to_string(path).unwrap_or_else(|_| default_content.to_string());
+        }
+    }
+    default_content.to_string()
+}
+
+fn prepare_runtime_config() -> PathBuf {
+    let runtime_dir = std::env::temp_dir().join("dumbshot_runtime");
+    let icons_dir = runtime_dir.join("icons");
 
     let _ = fs::create_dir_all(&icons_dir);
-    let _ = fs::create_dir_all(&eww_dir);
 
-    let write_if_not_exists = |path: PathBuf, data: &[u8]| {
-        if !path.exists() {
-            let _ = fs::write(path, data);
-        }
+    let mut write_icon = |name: &str, data: &[u8]| {
+        let _ = fs::write(icons_dir.join(name), data);
     };
 
-    write_if_not_exists(icons_dir.join("Area.svg"), ICON_AREA);
-    write_if_not_exists(icons_dir.join("Monitor.svg"), ICON_MONITOR);
-    write_if_not_exists(icons_dir.join("Copy.svg"), ICON_COPY);
-    write_if_not_exists(icons_dir.join("Edit.svg"), ICON_EDIT);
-    write_if_not_exists(icons_dir.join("Save.svg"), ICON_SAVE);
-    write_if_not_exists(icons_dir.join("SavenCopy.svg"), ICON_SAVENCOPY);
+    write_icon("area.svg", ICON_AREA);
+    write_icon("monitor.svg", ICON_MONITOR);
+    write_icon("all.svg", ICON_MONITOR);
+    write_icon("copy.svg", ICON_COPY);
+    write_icon("edit.svg", ICON_EDIT);
+    write_icon("save.svg", ICON_SAVE);
+    write_icon("savencopy.svg", ICON_SAVENCOPY);
 
-    write_if_not_exists(eww_dir.join("eww.yuck"), EWW_YUCK.as_bytes());
-    write_if_not_exists(eww_dir.join("eww.css"), EWW_CSS.as_bytes());
+    let yuck = get_config_content("eww.yuck", EWW_YUCK);
+    let css = get_config_content("eww.css", EWW_CSS);
 
-    eww_dir
+    let monitor_id = get_active_monitor_id();
+    let final_yuck = yuck.replace("MONITOR_ID_HERE", &monitor_id.to_string());
+
+    let _ = fs::write(runtime_dir.join("eww.yuck"), final_yuck);
+    let _ = fs::write(runtime_dir.join("eww.css"), css);
+
+    runtime_dir
 }
 
 fn get_active_monitor_id() -> i64 {
@@ -67,15 +80,12 @@ fn get_active_monitor_id() -> i64 {
 }
 
 fn run_eww_menu(title: &str, options: &[(String, Vec<u8>, String)]) -> Option<String> {
-    let eww_config_path = ensure_config();
-    let icons_dir = eww_config_path.parent().unwrap().join("icons");
+    let runtime_path = prepare_runtime_config();
+    let icons_dir = runtime_path.join("icons");
 
     let mut buttons_yuck = String::from("(box :orientation \"h\" :spacing 15 ");
-    for (label, icon_bytes, id) in options {
+    for (label, _, id) in options {
         let icon_file = icons_dir.join(format!("{}.svg", id));
-        if !icon_file.exists() {
-            let _ = fs::write(&icon_file, icon_bytes);
-        }
 
         buttons_yuck.push_str(&format!(
             r#"(button :class "menu-btn" :onclick "echo '{}' > /tmp/dumbshot_res"
@@ -87,17 +97,10 @@ fn run_eww_menu(title: &str, options: &[(String, Vec<u8>, String)]) -> Option<St
     }
     buttons_yuck.push(')');
 
-    let current_yuck = fs::read_to_string(eww_config_path.join("eww.yuck")).unwrap_or_else(|_| EWW_YUCK.to_string());
-
-    let monitor_id = get_active_monitor_id();
-    let final_yuck = current_yuck.replace("MONITOR_ID_HERE", &monitor_id.to_string());
-
-    let _ = fs::write(eww_config_path.join("eww.yuck"), final_yuck.as_bytes());
-
     let res_file = Path::new("/tmp/dumbshot_res");
     let _ = fs::remove_file(res_file);
 
-    let config_arg = eww_config_path.to_string_lossy();
+    let config_arg = runtime_path.to_string_lossy();
 
     let mut daemon = Command::new("eww")
         .args(["--config", &config_arg, "daemon", "--no-daemonize"])
@@ -113,7 +116,17 @@ fn run_eww_menu(title: &str, options: &[(String, Vec<u8>, String)]) -> Option<St
         .args(["--config", &config_arg, "update", &format!("buttons_json={}", buttons_yuck)])
         .status();
 
-    let _ = Command::new("eww").args(["--config", &config_arg, "open", "menu"]).status();
+    let monitor_id = get_active_monitor_id();
+    let _ = Command::new("eww")
+        .args([
+            "--config",
+            &config_arg,
+            "open",
+            "menu",
+            "--arg",
+            &format!("mon={}", monitor_id)
+        ])
+        .status();
 
     let mut result = None;
     for _ in 0..600 {
