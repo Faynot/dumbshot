@@ -161,6 +161,32 @@ fn capture_screenshot(args: &[&str], path: &str) -> bool {
 }
 
 fn main() {
+    let args: Vec<String> = std::env::args().collect();
+
+    if args.len() > 1 {
+            match args[1].as_str() {
+                "--version" | "-V" => {
+                    println!("dumbshot {}", env!("CARGO_PKG_VERSION"));
+                    return;
+                }
+                "--help" | "-h" => {
+                    println!("dumbshot {}", env!("CARGO_PKG_VERSION"));
+                    println!("");
+                    println!(
+                        "An elegant, painless one-click screenshot utility for Wayland (grim + slurp)"
+                    );
+                    println!("");
+                    println!("Usage: dumbshot [OPTIONS]");
+                    println!("");
+                    println!("Options:");
+                    println!("  -h, --help     Print help");
+                    println!("  -V, --version  Print version");
+                    return;
+                }
+                _ => {}
+            }
+        }
+
     if which("eww").is_err() || which("grim").is_err() || which("slurp").is_err() {
         eprintln!("Error: 'eww', 'grim' and 'slurp' are required.");
         return;
