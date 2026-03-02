@@ -25,12 +25,9 @@ Install dependencies:
 - libnotify
 - slurp
 - wl-clipboard
-- make (make) *
+- eww
 - cargo (make) *
 - rust (make) *
-- wofi (optional: Recommended GUI for action selection ) *
-- rofi ( optional: Alternative GUI ) *
-- dmenu (optional: Minimalistic GUI) *
 - hyprland (optional: To automatically determine monitors via hyprctl) *
 - satty (optional: For editing screenshots) *
 
@@ -39,7 +36,7 @@ Run these commands:
 ```shell
 git clone https://github.com/Faynot/dumbshot
 cd dumbshot
-make build && sudo make install
+cargo install --path .
 ```
 
 ## Using
