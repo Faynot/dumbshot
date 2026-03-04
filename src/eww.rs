@@ -1,8 +1,8 @@
-use crate::hypr::get_active_monitor_id;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::Duration;
 use std::{fs, thread};
+use crate::hypr::get_active_monitor_index;
 
 const ICON_AREA: &[u8] = include_bytes!("../assets/icons/Area.svg");
 const ICON_MONITOR: &[u8] = include_bytes!("../assets/icons/Monitor.svg");
@@ -51,26 +51,18 @@ pub fn run_eww_menu(title: &str, options: &[MenuOption]) -> Option<String> {
         .spawn()
         .ok()?;
 
-    thread::sleep(Duration::from_millis(300));
+    thread::sleep(Duration::from_millis(500)); // Немного увеличим для стабильности
 
     let _ = Command::new("eww")
-        .args([
-            "--config",
-            &config_arg,
-            "update",
-            &format!("title={}", title),
-        ])
+        .args(["--config", &config_arg, "update", &format!("title={}", title)])
         .status();
+    
     let _ = Command::new("eww")
-        .args([
-            "--config",
-            &config_arg,
-            "update",
-            &format!("buttons_json={}", buttons_yuck),
-        ])
+        .args(["--config", &config_arg, "update", &format!("buttons_json={}", buttons_json_fix(&buttons_yuck))])
         .status();
 
-    let monitor_id = get_active_monitor_id();
+let monitor_index = get_active_monitor_index(); 
+    
     let _ = Command::new("eww")
         .args([
             "--config",
@@ -78,7 +70,7 @@ pub fn run_eww_menu(title: &str, options: &[MenuOption]) -> Option<String> {
             "open",
             "menu",
             "--arg",
-            &format!("mon={}", monitor_id),
+            &format!("mon={}", monitor_index), // Передаем число (0, 1...)
         ])
         .status();
 
@@ -96,23 +88,20 @@ pub fn run_eww_menu(title: &str, options: &[MenuOption]) -> Option<String> {
         thread::sleep(Duration::from_millis(100));
     }
 
-    let _ = Command::new("eww")
-        .args(["--config", &config_arg, "kill"])
-        .status();
+    let _ = Command::new("eww").args(["--config", &config_arg, "kill"]).status();
     let _ = daemon.kill();
     let _ = fs::remove_file(res_file);
 
-    if result == Some("Cancel".into()) {
-        None
-    } else {
-        result
-    }
+    if result == Some("Cancel".into()) { None } else { result }
+}
+
+fn buttons_json_fix(s: &str) -> String {
+    s.to_string()
 }
 
 fn prepare_runtime_config() -> PathBuf {
     let runtime_dir = std::env::temp_dir().join("dumbshot_runtime");
     let icons_dir = runtime_dir.join("icons");
-
     let _ = fs::create_dir_all(&icons_dir);
 
     let write_icon = |name: &str, data: &[u8]| {
@@ -127,22 +116,8 @@ fn prepare_runtime_config() -> PathBuf {
     write_icon("save.svg", ICON_SAVE);
     write_icon("savencopy.svg", ICON_SAVENCOPY);
 
-    let yuck = get_config_content("eww.yuck", EWW_YUCK);
-    let css = get_config_content("eww.css", EWW_CSS);
-
-    let _ = fs::write(runtime_dir.join("eww.yuck"), yuck);
-    let _ = fs::write(runtime_dir.join("eww.css"), css);
+    let _ = fs::write(runtime_dir.join("eww.yuck"), EWW_YUCK);
+    let _ = fs::write(runtime_dir.join("eww.css"), EWW_CSS);
 
     runtime_dir
-}
-
-fn get_config_content(file_name: &str, default_content: &str) -> String {
-    let user_path = dirs::config_dir().map(|p| p.join("dumbshot").join("eww").join(file_name));
-
-    if let Some(path) = user_path {
-        if path.exists() {
-            return fs::read_to_string(path).unwrap_or_else(|_| default_content.to_string());
-        }
-    }
-    default_content.to_string()
 }

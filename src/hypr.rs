@@ -21,6 +21,27 @@ pub fn get_active_monitor_id() -> i64 {
     0
 }
 
+pub fn get_active_monitor_index() -> i64 {
+    let output = Command::new("hyprctl")
+        .args(["monitors", "-j"])
+        .output()
+        .ok();
+
+    if let Some(out) = output {
+        if let Ok(v) = serde_json::from_slice::<Value>(&out.stdout) {
+            if let Some(monitors) = v.as_array() {
+                // Ищем индекс монитора, который сейчас в фокусе
+                for (i, m) in monitors.iter().enumerate() {
+                    if m["focused"].as_bool().unwrap_or(false) {
+                        return i as i64;
+                    }
+                }
+            }
+        }
+    }
+    0
+}
+
 pub fn get_monitors_list() -> Option<Vec<String>> {
     let out = Command::new("hyprctl")
         .args(["monitors", "-j"])
